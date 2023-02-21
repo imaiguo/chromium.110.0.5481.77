@@ -1,0 +1,193 @@
+#!/usr/bin/make -f
+
+# enable verbose build messages
+export DH_VERBOSE=1
+
+# enable all build hardening flags
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+# disable unsupported flag in clang 7
+export DEB_BUILD_MAINT_OPTIONS+=reproducible=-fixfilepath
+
+# indicate that binary targets do not require root
+export DEB_RULES_REQUIRES_ROOT=no
+
+# compile with clang (gcc is currently not supported)
+export AR=ar
+export NM=nm
+export CC=clang
+export CXX=clang++
+
+# more verbose linker output
+export LDFLAGS+=-Wl,--stats
+
+# initial flags from dpkg-buildflags
+export DEB_CXXFLAGS_MAINT_STRIP=-g
+export CXXFLAGS=$(shell dpkg-buildflags --get CXXFLAGS)
+
+# extra flags to reduce warnings that aren't very useful
+export CXXFLAGS+=-Wno-conversion \
+                 -Wno-unused-function \
+                 -Wno-unused-variable \
+                 -Wno-unused-private-field \
+                 -Wno-deprecated-declarations \
+                 -Wno-unknown-pragmas \
+
+
+# do not optimize away null pointer safety checks
+export CXXFLAGS+=-fno-delete-null-pointer-checks
+
+# disable clang plugins
+defines=clang_use_chrome_plugins=false
+
+# build using system toolchain
+defines+=host_toolchain=\"//build/toolchain/linux/unbundle:default\"
+defines+=custom_toolchain=\"//build/toolchain/linux/unbundle:default\"
+
+# set the appropriate cpu architecture
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+PAGESIZE ?= $(shell getconf PAGESIZE)
+ifeq (i386,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"x86\"
+endif
+ifeq (amd64,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"x64\"
+endif
+ifeq (arm64,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"arm64\"
+endif
+ifeq (armhf,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"arm\" arm_use_neon=false symbol_level=0
+endif
+ifeq (mips64el,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"mips64el\" mips_arch_variant=\"loongson3\" enable_jxl_decoder=false enable_libaom=false
+endif
+ifeq (65536,$(PAGESIZE))
+defines+=use_pagesize_64k=true
+endif
+
+ifeq (loongarch64,$(DEB_HOST_ARCH))
+defines+=host_cpu=\"loong64\" \
+	symbol_level=0 \
+	enable_swiftshader=false \
+	enable_swiftshader_vulkan=false \
+	angle_enable_vulkan=false \
+	use_lld=false \
+	gtest_enable_absl_printers=false \
+	libyuv_use_absl_flags=false \
+	enable_jxl_decoder=false \
+        use_allocator=\"none\" \
+	enable_libaom=false
+endif
+
+# disabled features
+defines+=is_debug=false \
+         use_goma=false \
+         use_sysroot=false \
+         use_custom_libcxx=false \
+         use_gnome_keyring=false \
+         enable_nacl=false \
+         enable_js_type_check=false \
+         treat_warnings_as_errors=false \
+         blink_symbol_level=0 \
+         use_vaapi=false \
+         media_use_openh264=false \
+	 rtc_use_h264=false \
+         enable_reading_list=false \
+
+# enabled features
+defines+=use_system_freetype=true \
+         proprietary_codecs=true \
+         ffmpeg_branding=\"Chrome\" \
+
+# handle parallel build options
+njobs=1
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+njobs=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+endif
+
+%:
+	dh $@
+
+out/Release/gn:
+	./tools/gn/bootstrap/bootstrap.py --skip-generate-buildfiles
+
+override_dh_auto_configure: out/Release/gn
+	# use system node w/out patching source; upstream hardcodes x64 in path
+	mkdir -p third_party/node/linux/node-linux-x64/bin
+	cp /usr/bin/node third_party/node/linux/node-linux-x64/bin
+	# output compiler information
+	$(CXX) --version
+	# prefer unbundled (system) libraries
+	# ./debian/scripts/unbundle
+	./debian/scripts/extract_node_binaries
+
+override_dh_auto_build-arch:
+	./out/Release/gn gen out/Release --args="$(defines)"
+	ninja -j$(njobs) -C out/Release chrome chrome_sandbox content_shell chromedriver
+	cp out/Release/chrome out/Release/chromium
+	cp out/Release/content_shell out/Release/chromium-shell
+	cp out/Release/chrome_sandbox out/Release/chrome-sandbox
+	cp out/Release/locales/en-US.pak out/Release/resources
+	chmod 4755 out/Release/chrome-sandbox # suid sandbox
+	sed -e s/@@PACKAGE@@/chromium/g -e s/@@MENUNAME@@/chromium/g \
+	    < chrome/app/resources/manpage.1.in > out/Release/chromium.1
+
+override_dh_auto_build-indep:
+	./out/Release/gn gen out/Release --args="$(defines)"
+	ninja -j$(njobs) -C out/Release packed_resources
+	rm -f out/Release/locales/en-US.pak
+
+override_dh_auto_install-arch:
+	dh_auto_install
+	# update launcher script with build information
+	sed 's|@BUILD_DIST@|$(shell cat /etc/debian_version)|' \
+	    < debian/scripts/chromium > debian/chromium/usr/bin/chromium
+	# move icons into /usr/share
+	./debian/scripts/icons
+
+override_dh_fixperms:
+	dh_fixperms --exclude chrome-sandbox
+
+override_dh_auto_clean:
+	rm -rf third_party/node/linux/node-linux-x64
+	# rm -rf out
+	find . -name \*.pyc -execdir rm -f {} \;
+	dh_auto_clean
+
+###################### upstream source downloading ############################
+
+url=https://gsdview.appspot.com/chromium-browser-official
+version=$(shell dpkg-parsechangelog -S Version | sed s/-.*//)
+extract=chromium-$(version)
+tarfile=$(extract).tar
+tarball=$(tarfile).xz
+debvers=../chromium_$(version)
+seconds=$(debvers).seconds
+origtxz=$(debvers).orig.tar.xz
+removed=$(debvers).files-removed
+options=--sort=name --owner=0 --group=0 --numeric-owner --mtime="@$$(stat --format "%Y" ../$(tarball))" --clamp-mtime
+
+get-orig-source:
+	wget -nv --show-progress -c $(url)/$(tarball) -O ../$(tarball)
+	cp /usr/share/perl5/Devscripts/MkOrigtargz.pm debian/scripts/mk-origtargz
+	patch -p1 < debian/scripts/mk-origtargz.patch
+	@date +%s > $(seconds)
+	perl debian/scripts/mk-origtargz ../$(tarball) > $(removed)
+	@echo $$(($$(date +%s) - $$(cat $(seconds)))) seconds
+	@echo
+	test ! -e $(extract) || rm -rf $(extract)
+	tar xf ../$(tarball)
+	@echo $$(($$(date +%s) - $$(cat $(seconds)))) seconds
+	@echo
+	while read line; do rm -rf $$line; done < $(removed)
+	cd $(extract) && ../debian/scripts/check-upstream
+	@echo $$(($$(date +%s) - $$(cat $(seconds)))) seconds
+	@echo
+	test ! -e $(origtxz) || rm -f $(origtxz)
+	tar $(options) -cf - $(extract) | xz -6 -T0 - > $(origtxz)
+	@echo $$(($$(date +%s) - $$(cat $(seconds)))) seconds
+	@echo
+	rm -rf $(extract)
+	@echo $$(($$(date +%s) - $$(cat $(seconds)))) seconds | tee seconds
+	@mv -f seconds $(seconds)

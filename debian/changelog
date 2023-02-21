@@ -1,0 +1,6 @@
+chromium (110.0.5481.77) unstable; urgency=medium
+
+  * init code from https://gsdview.appspot.com/chromium-browser-official/chromium-110.0.5481.77.tar.xz
+  * &&  find -name   .gitignore | xargs rm -rf
+
+ -- imaiguo <imaiguo@gmail.com>  Tue, 21 Feb 2023 16:45:30 +0800

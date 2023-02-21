@@ -1,0 +1,13 @@
+#!/usr/bin/python3 -B
+
+import platform
+import os
+
+if platform.machine() == 'aarch64':
+  os.system('tar -zxf third_party/node/linux/node-linux-arm64.tar.gz -C third_party/node/linux')
+
+if platform.machine() == 'x86_64':
+  os.system('tar -zxf third_party/node/linux/node-linux-x64.tar.gz -C third_party/node/linux')
+
+if platform.machine() == 'mips64':
+  os.system('tar -zxf third_party/node/linux/node-linux-mips64.tar.gz -C third_party/node/linux')

@@ -1,0 +1,7 @@
+files
+*.log
+*.substvars
+
+.debhelper
+debhelper-build-stamp
+scripts/mk-origtargz
