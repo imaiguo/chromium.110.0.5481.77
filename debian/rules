@@ -83,6 +83,7 @@ endif
 # disabled features
 defines+=is_debug=false \
          use_goma=false \
+         is_clang=false \
          use_sysroot=false \
          use_custom_libcxx=false \
          use_gnome_keyring=false \
