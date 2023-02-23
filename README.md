@@ -1,21 +1,52 @@
-# ![Logo](chrome/app/theme/chromium/product_logo_64.png) Chromium
+# ![Logo](chrome/app/theme/chromium/product_logo_22_mono.png) Chromium
 
-Chromium is an open-source browser project that aims to build a safer, faster,
-and more stable way for all users to experience the web.
+# Code upstream
 
-The project's web site is https://www.chromium.org.
+this code from
 
-To check out the source code locally, don't use `git clone`! Instead,
-follow [the instructions on how to get the code](docs/get_the_code.md).
+chromium mirror https://gsdview.appspot.com/chromium-browser-official/chromium-110.0.5481.77.tar.xz
 
-Documentation in the source is rooted in [docs/README.md](docs/README.md).
+chromium gerrit https://chromium-review.googlesource.com/
 
-Learn how to [Get Around the Chromium Source Code Directory Structure
-](https://www.chromium.org/developers/how-tos/getting-around-the-chrome-source-code).
+# build
 
-For historical reasons, there are some small top level directories. Now the
-guidance is that new top level directories are for product (e.g. Chrome,
-Android WebView, Ash). Even if these products have multiple executables, the
-code should be in subdirectories of the product.
+## debian
+```shell
+$ cd chromium.x.x.x.x 
 
-If you found a bug, please file it at https://crbug.com/new.
+$ apt build-dep . 
+
+$ debuild -b
+```
+## windows
+
+### 1. get gn.exe & ninja.exe
+```shell
+> set DEPOT_TOOLS_WIN_TOOLCHAIN=0
+```
+
+### 2. install visual studiuo
+
+确保勾选了 Windows Kits 10 软件修改属性 打开功能选项 “Debugging Tools For Windows” 
+
+### 3. build
+```shell
+> gn gen out/Default
+
+> ninja -C out/Default chrome
+```
+
+
+发布编译gn参数
+
+```shell
+target_os="win"
+target_cpu="x64"
+is_component_build=false
+is_debug=false
+is_official_build=true
+```
+编译
+```shell
+> ninja -C out\Release mini_installer
+```
