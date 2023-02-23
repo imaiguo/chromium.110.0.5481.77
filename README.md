@@ -30,12 +30,18 @@ $ debuild -b
 确保勾选了 Windows Kits 10 软件修改属性 打开功能选项 “Debugging Tools For Windows” 
 
 ### 3. build
+编译llvm
 ```shell
-> gn gen out/Default
+> cmake -S third_party/llvm/llvm -B third_party/llvm-build -G Ninja -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="llvm;lld;clang;compiler-rt" -DCMAKE_INSTALL_PREFIX=third_party/llvm-build/Release+Asserts
 
-> ninja -C out/Default chrome
+> ninja -C third_party/llvm-build install
 ```
+编译浏览器
+```shell
+> gn gen out/Default --args="clang_use_chrome_plugins=false"
 
+> ninja -C out/Default chrome content_shell chromedriver
+```
 
 发布编译gn参数
 
