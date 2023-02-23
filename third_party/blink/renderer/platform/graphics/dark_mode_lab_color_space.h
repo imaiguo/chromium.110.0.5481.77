@@ -151,9 +151,9 @@ class DarkModeLABColorSpace {
     SkV3 v = {Clamp(lab.x, 0.0f, 100.0f), Clamp(lab.y, -128.0f, 128.0f),
               Clamp(lab.z, -128.0f, 128.0f)};
 
-    return {invf((v.x + 16.0f) / 116.0f + (v.y * 0.002f)) * kIlluminantD50.x,
-            invf((v.x + 16.0f) / 116.0f) * kIlluminantD50.y,
-            invf((v.x + 16.0f) / 116.0f - (v.z * 0.005f)) * kIlluminantD50.z};
+    return {(float)invf((v.x + 16.0f) / 116.0f + (v.y * 0.002f)) * kIlluminantD50.x,
+            (float)invf((v.x + 16.0f) / 116.0f) * kIlluminantD50.y,
+            (float)invf((v.x + 16.0f) / 116.0f - (v.z * 0.005f)) * kIlluminantD50.z};
   }
 
  private:

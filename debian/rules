@@ -38,7 +38,7 @@ export CXXFLAGS+=-Wno-conversion \
 export CXXFLAGS+=-fno-delete-null-pointer-checks
 
 # disable clang plugins
-# defines=clang_use_chrome_plugins=false
+defines=clang_use_chrome_plugins=false
 
 # build using system toolchain
 # defines+=host_toolchain=\"//build/toolchain/linux/unbundle:default\"
@@ -109,9 +109,9 @@ endif
 %:
 	dh $@
 
-third_party/llvm-build/bin/lld:
+llvm-build:
 	cmake -S third_party/llvm/llvm -B third_party/llvm-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-	  -DLLVM_ENABLE_PROJECTS="llvm;lld;clang;clang-tools-extra" \
+	  -DLLVM_ENABLE_PROJECTS="llvm;lld;clang;clang-tools-extra;compiler-rt" \
 	  -DCMAKE_INSTALL_PREFIX=third_party/llvm-build/Release+Asserts
 	ninja -C third_party/llvm-build
 	ninja -C third_party/llvm-build install
@@ -119,7 +119,7 @@ third_party/llvm-build/bin/lld:
 out/Release/gn:
 	./tools/gn/bootstrap/bootstrap.py --skip-generate-buildfiles
 
-override_dh_auto_configure: out/Release/gn third_party/llvm-build/bin/lld
+override_dh_auto_configure: out/Release/gn llvm-build
 	# use system node w/out patching source; upstream hardcodes x64 in path
 	mkdir -p third_party/node/linux/node-linux-x64/bin
 	cp /usr/bin/node third_party/node/linux/node-linux-x64/bin
