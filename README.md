@@ -37,12 +37,17 @@ $ debuild -b
 > ninja -C third_party/llvm-build install
 ```
 编译浏览器
+
 ```shell
-> gn gen out/Default --args="clang_use_chrome_plugins=false"
+> cmd.exe
 
-> rm third_party\devtools-frontend\src\third_party\esbuild
+> vcvars64.bat
 
-> ninja -C out/Default chrome content_shell chromedriver
+> "buildtools/win/gn.exe" gen out/Default --args="clang_use_chrome_plugins=false"
+
+> del /q third_party\devtools-frontend\src\third_party\esbuild
+
+> "third_party/depot_tools/ninja.exe" -C out/Default chrome content_shell chromedriver
 ```
 
 发布编译gn参数
