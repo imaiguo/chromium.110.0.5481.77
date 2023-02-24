@@ -40,6 +40,8 @@ $ debuild -b
 ```shell
 > gn gen out/Default --args="clang_use_chrome_plugins=false"
 
+> rm third_party\devtools-frontend\src\third_party\esbuild
+
 > ninja -C out/Default chrome content_shell chromedriver
 ```
 
