@@ -45,7 +45,7 @@ $ debuild -b
 
 > "buildtools/win/gn.exe" gen out/Default --args="clang_use_chrome_plugins=false"
 
-> del /q third_party\devtools-frontend\src\third_party\esbuild
+> del /q third_party\devtools-frontend\src\third_party\esbuild\esbuild
 
 > "third_party/depot_tools/ninja.exe" -C out/Default chrome content_shell chromedriver
 ```
