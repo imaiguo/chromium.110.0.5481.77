@@ -83,6 +83,9 @@ endif
 # disabled features
 defines+=is_debug=false \
          use_goma=false \
+         chrome_pgo_phase = false \
+         is_component_build=false \
+         is_official_build=true \
          use_sysroot=false \
          use_custom_libcxx=false \
          use_gnome_keyring=false \
